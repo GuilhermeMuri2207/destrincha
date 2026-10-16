@@ -67,6 +67,14 @@ function transacao(fn) {
   }
 }
 
+// Lançamentos com o "mês de referência" já calculado (AAAA-MM)
+const SQL_COM_MES = `
+  SELECT l.*, f.banco,
+         COALESCE(substr(f.vencimento, 1, 7), substr(l.data, 1, 7)) AS mes
+    FROM lancamentos l
+    JOIN faturas f ON f.id = l.fatura_id
+`;
+
 const sql = {
   inserirFatura: db.prepare(
     'INSERT INTO faturas (arquivo, banco, vencimento, total_fatura) VALUES (?, ?, ?, ?)'
@@ -102,6 +110,22 @@ const sql = {
       WHERE chave = ?`
   ),
   excluir: db.prepare('DELETE FROM faturas WHERE id = ?'),
+
+  // Total por mês e categoria. O mês é o do VENCIMENTO da fatura (quando o dinheiro sai),
+  // assim parcelas antigas entram no mês em que são pagas. Sem vencimento, usa a data da compra.
+  resumo: db.prepare(`
+    SELECT mes, categoria, ROUND(SUM(valor), 2) AS total, COUNT(*) AS qtd
+      FROM (${SQL_COM_MES})
+     WHERE mes IS NOT NULL
+     GROUP BY mes, categoria
+     ORDER BY mes, categoria
+  `),
+  lancamentosDoPeriodo: db.prepare(`
+    SELECT id, data, nome, descricao, valor, categoria, parcela, banco, mes
+      FROM (${SQL_COM_MES})
+     WHERE mes LIKE ? AND (? IS NULL OR categoria = ?)
+     ORDER BY valor DESC, data
+  `),
 };
 
 /** Salva a fatura extraída pela IA, aplicando as regras de categoria já aprendidas. */
@@ -160,4 +184,17 @@ export function corrigirLancamento(lancamentoId, { nome = null, categoria = null
 
 export function excluirFatura(id) {
   return Number(sql.excluir.run(id).changes) > 0;
+}
+
+/** Totais por mês (AAAA-MM) e categoria, de todas as faturas. */
+export function resumoMensal() {
+  return sql.resumo.all();
+}
+
+/**
+ * Lançamentos de um período: "AAAA" (ano) ou "AAAA-MM" (mês).
+ * Categoria é opcional.
+ */
+export function lancamentosDoPeriodo(periodo, categoria = null) {
+  return sql.lancamentosDoPeriodo.all(`${periodo}%`, categoria, categoria);
 }

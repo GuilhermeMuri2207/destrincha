@@ -8,6 +8,8 @@ import {
   obterFatura,
   corrigirLancamento,
   excluirFatura,
+  resumoMensal,
+  lancamentosDoPeriodo,
 } from './db.js';
 
 const PORT = process.env.PORT || 3000;
@@ -81,6 +83,23 @@ app.patch('/api/lancamentos/:id', (req, res) => {
   });
   if (!resultado) return res.status(404).json({ erro: 'Lançamento não encontrado.' });
   res.json(resultado);
+});
+
+// ---------- Resumos ----------
+
+// Totais por mês e categoria; o front monta as visões mensal e anual
+app.get('/api/resumo', (_req, res) => res.json(resumoMensal()));
+
+// Lançamentos de um período (?periodo=2026 ou 2026-10) e, opcionalmente, de uma categoria
+app.get('/api/lancamentos', (req, res) => {
+  const { periodo, categoria } = req.query;
+  if (!/^\d{4}(-\d{2})?$/.test(String(periodo || ''))) {
+    return res.status(400).json({ erro: 'Período inválido. Use AAAA ou AAAA-MM.' });
+  }
+  if (categoria && !CATEGORIAS.includes(categoria)) {
+    return res.status(400).json({ erro: 'Categoria inválida.' });
+  }
+  res.json(lancamentosDoPeriodo(periodo, categoria || null));
 });
 
 app.listen(PORT, () => {

@@ -11,6 +11,7 @@ Projeto de estudo e portfólio.
 - **Categorias automáticas**: Mercado, Transporte, Assinaturas, Saúde e outras, com gráfico de gastos por categoria.
 - **Correções que o app aprende**: renomeie um lançamento ou troque a categoria e a mudança vale para todos os lançamentos do mesmo estabelecimento, inclusive nas próximas faturas.
 - **Histórico**: as faturas ficam salvas num banco SQLite local.
+- **Resumos mensal e anual**: total gasto, comparação com o período anterior, gasto por categoria, evolução mês a mês e tabela de categorias × meses. Clique numa categoria para ver todos os lançamentos dela no período, de todos os cartões.
 - **Conferência**: compara a soma dos lançamentos com o total impresso na fatura.
 
 ## Stack
@@ -51,6 +52,10 @@ data/            arquivo do banco (criado automaticamente, fora do Git)
 | `DELETE` | `/api/faturas/:id` | Exclui uma fatura |
 | `PATCH` | `/api/lancamentos/:id` | Corrige `nome` e/ou `categoria` e cria uma regra para o estabelecimento |
 | `GET` | `/api/categorias` | Lista as categorias disponíveis |
+| `GET` | `/api/resumo` | Totais por mês e categoria |
+| `GET` | `/api/lancamentos?periodo=AAAA-MM&categoria=X` | Lançamentos de um mês ou ano (`periodo=AAAA`), com filtro opcional de categoria |
+
+O **mês** de cada lançamento nos resumos é o mês de **vencimento da fatura**, não a data da compra. Assim, a parcela 9/10 de uma compra de dezembro entra no mês em que é paga, e faturas de cartões diferentes que vencem no mesmo mês são somadas.
 
 ## Como o app "aprende"
 
@@ -64,6 +69,6 @@ Cada lançamento recebe uma **chave** gerada a partir da descrição original, i
 
 ## Próximos passos
 
-- Histórico mês a mês com gasto por categoria ao longo do tempo
+- Metas de gasto por categoria com alerta
 - Detecção de assinaturas recorrentes
 - Login, deploy público e versão mobile

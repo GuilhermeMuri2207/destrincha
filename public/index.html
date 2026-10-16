@@ -62,7 +62,43 @@
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .92rem; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
     #toast.visivel { opacity: 1; }
+    /* ---------- Abas ---------- */
+    .abas { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .aba { background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); padding: 10px 14px; font-weight: 500; }
+    .aba.ativa { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ---------- Resumo ---------- */
+    .controles { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .segmento { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .segmento button { background: var(--card); color: var(--muted); border: 0; border-radius: 0; padding: 7px 14px; }
+    .segmento button.ativo { background: var(--accent); color: #fff; }
+    .delta { font-size: .82rem; margin-top: 4px; }
+    .sobe { color: var(--neg); }
+    .desce { color: var(--ok); }
+    .barra-cat { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: 2px -4px; grid-template-columns: 160px 1fr 110px 70px; }
+    .barra-cat:hover { background: var(--accent-soft); }
+    .barra-cat .pct { color: var(--muted); font-size: .82rem; text-align: right; }
+    .colunas { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; align-items: end; height: 180px; padding-top: 8px; }
+    .coluna { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; background: transparent; border: 0; padding: 0; color: var(--muted); font-size: .75rem; }
+    .coluna .haste { width: 100%; max-width: 38px; background: var(--border); border-radius: 4px 4px 0 0; min-height: 2px; }
+    .coluna.tem .haste { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+    .coluna.sel .haste { background: var(--accent); }
+    .coluna:hover .haste { outline: 2px solid var(--accent); }
+    .coluna .mes { margin-top: 6px; }
+    .coluna .vlr { margin-bottom: 4px; color: var(--text); font-size: .72rem; white-space: nowrap; }
+    .matriz td, .matriz th { white-space: nowrap; font-size: .85rem; padding: 7px 8px; }
+    .matriz td.celula { text-align: right; cursor: pointer; font-variant-numeric: tabular-nums; }
+    .matriz td.celula:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .matriz th.cat { position: sticky; left: 0; background: var(--card); color: var(--text); font-weight: 500; cursor: pointer; }
+    .matriz tfoot td { font-weight: 600; border-bottom: 0; }
+    .fechar { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; }
+
     @media (max-width: 560px) {
+      .barra.barra-cat { grid-template-columns: 1fr auto 44px; }
+      .coluna .vlr { display: none; }
+      .barra-cat .trilho { grid-column: 1 / -1; grid-row: 2; }
+      .colunas { gap: 3px; }
+      .coluna .mes { font-size: .65rem; }
       .barra { grid-template-columns: 1fr 90px; }
       .barra .trilho { grid-column: 1 / -1; grid-row: 2; }
     }
@@ -73,7 +109,69 @@
   <h1>Destrincha</h1>
   <p class="sub">Sua fatura, destrinchada. Envie o PDF do cartão e veja seus gastos por categoria.</p>
 
-  <div class="layout">
+  <nav class="abas">
+    <button class="aba ativa" data-aba="faturas">Faturas</button>
+    <button class="aba" data-aba="resumo">Resumo</button>
+  </nav>
+
+  <!-- ==================== ABA RESUMO ==================== -->
+  <div id="aba-resumo" class="hidden">
+    <div id="resumoVazio" class="card hidden">
+      <p class="rotulo" style="margin:0">Envie pelo menos uma fatura para ver os resumos.</p>
+    </div>
+
+    <div id="resumoConteudo">
+      <div class="controles">
+        <div class="segmento">
+          <button data-modo="mes" class="ativo">Mês</button>
+          <button data-modo="ano">Ano</button>
+        </div>
+        <select id="periodo" aria-label="Período"></select>
+        <span class="rotulo">Mês = mês de vencimento da fatura</span>
+      </div>
+
+      <div class="resumo">
+        <div class="card"><div class="rotulo">Total gasto</div><div class="valor" id="rTotal">—</div><div class="delta" id="rDelta"></div></div>
+        <div class="card"><div class="rotulo" id="rMediaRotulo">Lançamentos</div><div class="valor" id="rMedia">—</div></div>
+        <div class="card"><div class="rotulo">Maior categoria</div><div class="valor" id="rMaior">—</div><div class="delta rotulo" id="rMaiorValor"></div></div>
+        <div class="card"><div class="rotulo">Faturas no período</div><div class="valor" id="rFaturas">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3 id="rCatTitulo">Por categoria</h3>
+        <div id="rCategorias"></div>
+        <p class="rotulo" style="margin:8px 0 0">Clique numa categoria para ver os lançamentos.</p>
+      </div>
+
+      <div id="detalhe" class="card hidden">
+        <div class="topo">
+          <h3 id="detalheTitulo"></h3>
+          <button class="fechar" id="fecharDetalhe">Fechar</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Data</th><th>Lançamento</th><th>Cartão</th><th>Parcela</th><th class="num">Valor</th></tr></thead>
+            <tbody id="detalheLinhas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 id="rEvolucaoTitulo">Evolução mês a mês</h3>
+        <div class="colunas" id="rColunas"></div>
+      </div>
+
+      <div class="card">
+        <h3 id="rMatrizTitulo">Categorias × meses</h3>
+        <div style="overflow-x:auto">
+          <table class="matriz" id="rMatriz"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ABA FATURAS ==================== -->
+  <div class="layout" id="aba-faturas">
     <aside>
       <form id="form" class="card">
         <label class="drop" id="drop">
@@ -332,6 +430,232 @@
     } catch (err) {
       toast(err.message);
     }
+  });
+
+  // ==================== ABAS ====================
+  document.querySelectorAll('.aba').forEach((b) =>
+    b.addEventListener('click', () => trocarAba(b.dataset.aba)));
+
+  function trocarAba(aba) {
+    document.querySelectorAll('.aba').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
+    $('aba-faturas').classList.toggle('hidden', aba !== 'faturas');
+    $('aba-resumo').classList.toggle('hidden', aba !== 'resumo');
+    if (aba === 'resumo') carregarResumo(); // recarrega para refletir correções e novas faturas
+  }
+
+  // ==================== RESUMO ====================
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const nomeMes = (m) => `${MESES[Number(m.slice(5, 7)) - 1]}/${m.slice(0, 4)}`;
+  const nomePeriodo = (p) => (p.length === 4 ? p : nomeMes(p));
+  const soma = (obj) => Object.values(obj).reduce((s, v) => s + v, 0);
+  const compacto = (v) => (v >= 1000 ? `R$ ${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : `R$ ${Math.round(v)}`);
+  const pct = (v, t) => (t > 0 ? `${Math.round((v / t) * 100)}%` : '');
+
+  // linhas = [{ mes: 'AAAA-MM', categoria, total, qtd }]
+  const R = { linhas: [], faturas: [], modo: 'mes', periodo: null };
+
+  async function carregarResumo() {
+    try {
+      [R.linhas, R.faturas] = await Promise.all([api('/api/resumo'), api('/api/faturas')]);
+    } catch (err) {
+      toast(err.message);
+      return;
+    }
+    const vazio = R.linhas.length === 0;
+    $('resumoVazio').classList.toggle('hidden', !vazio);
+    $('resumoConteudo').classList.toggle('hidden', vazio);
+    if (vazio) return;
+    preencherPeriodos();
+    desenharResumo();
+  }
+
+  function periodosDisponiveis(modo) {
+    const meses = [...new Set(R.linhas.map((l) => l.mes))].sort().reverse();
+    return modo === 'mes' ? meses : [...new Set(meses.map((m) => m.slice(0, 4)))];
+  }
+
+  function preencherPeriodos() {
+    const lista = periodosDisponiveis(R.modo);
+    if (!lista.includes(R.periodo)) R.periodo = lista[0];
+    $('periodo').innerHTML = lista
+      .map((p) => `<option value="${p}" ${p === R.periodo ? 'selected' : ''}>${nomePeriodo(p)}</option>`)
+      .join('');
+  }
+
+  function mudarModo(modo, periodo) {
+    R.modo = modo;
+    R.periodo = periodo;
+    document.querySelectorAll('.segmento button').forEach((x) => x.classList.toggle('ativo', x.dataset.modo === modo));
+    preencherPeriodos();
+    fecharDetalhe();
+    desenharResumo();
+  }
+
+  document.querySelectorAll('.segmento button').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (R.modo === b.dataset.modo) return;
+      // Mantém o período coerente: mês → ano dele; ano → mês mais recente desse ano
+      const novo = b.dataset.modo === 'ano'
+        ? R.periodo.slice(0, 4)
+        : periodosDisponiveis('mes').find((m) => m.startsWith(R.periodo));
+      mudarModo(b.dataset.modo, novo);
+    }));
+
+  $('periodo').addEventListener('change', (e) => {
+    R.periodo = e.target.value;
+    fecharDetalhe();
+    desenharResumo();
+  });
+
+  function periodoAnterior(p) {
+    if (p.length === 4) return String(Number(p) - 1);
+    let [a, m] = p.split('-').map(Number);
+    m -= 1;
+    if (m === 0) { m = 12; a -= 1; }
+    return `${a}-${String(m).padStart(2, '0')}`;
+  }
+
+  function totaisPorCategoria(periodo) {
+    const t = {};
+    R.linhas
+      .filter((l) => l.mes.startsWith(periodo))
+      .forEach((l) => { t[l.categoria] = (t[l.categoria] || 0) + l.total; });
+    return t;
+  }
+
+  function comparacao(atual, anterior, periodoAnt) {
+    if (!anterior) return '';
+    const variacao = ((atual - anterior) / Math.abs(anterior)) * 100;
+    const ref = `<span class="rotulo">vs ${nomePeriodo(periodoAnt)}</span>`;
+    if (Math.abs(variacao) < 0.5) return `<span class="rotulo">Igual</span> ${ref}`;
+    return `<span class="${variacao > 0 ? 'sobe' : 'desce'}">${variacao > 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(0)}%</span> ${ref}`;
+  }
+
+  function desenharResumo() {
+    const p = R.periodo;
+    const ant = periodoAnterior(p);
+    const cats = totaisPorCategoria(p);
+    const total = soma(cats);
+
+    // ----- Cartões do topo -----
+    $('rTotal').textContent = brl(total);
+    $('rDelta').innerHTML = comparacao(total, soma(totaisPorCategoria(ant)), ant);
+
+    if (R.modo === 'ano') {
+      const nMeses = new Set(R.linhas.filter((l) => l.mes.startsWith(p)).map((l) => l.mes)).size;
+      $('rMediaRotulo').textContent = 'Média por mês';
+      $('rMedia').textContent = brl(total / (nMeses || 1));
+    } else {
+      $('rMediaRotulo').textContent = 'Lançamentos';
+      $('rMedia').textContent = R.linhas.filter((l) => l.mes === p).reduce((s, l) => s + l.qtd, 0);
+    }
+
+    const ordenadas = Object.entries(cats).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    $('rMaior').textContent = ordenadas[0]?.[0] || '—';
+    $('rMaiorValor').textContent = ordenadas[0] ? `${brl(ordenadas[0][1])} · ${pct(ordenadas[0][1], total)} do total` : '';
+    $('rFaturas').textContent = R.faturas.filter((f) => (f.vencimento || '').startsWith(p)).length;
+
+    // ----- Barras por categoria -----
+    $('rCatTitulo').textContent = `Por categoria · ${nomePeriodo(p)}`;
+    const max = ordenadas[0]?.[1] || 1;
+    $('rCategorias').innerHTML = ordenadas.map(([c, v]) => `
+      <div class="barra barra-cat" data-cat="${esc(c)}" title="Ver lançamentos de ${esc(c)}">
+        <span>${esc(c)}</span>
+        <div class="trilho"><div style="width:${(v / max) * 100}%"></div></div>
+        <span class="num">${brl(v)}</span>
+        <span class="pct">${pct(v, total)}</span>
+      </div>`).join('') || '<p class="rotulo">Sem gastos nesse período.</p>';
+
+    // ----- Evolução mês a mês do ano -----
+    const ano = p.slice(0, 4);
+    $('rEvolucaoTitulo').textContent = `Evolução mês a mês · ${ano}`;
+    const porMes = MESES.map((_, i) => {
+      const m = `${ano}-${String(i + 1).padStart(2, '0')}`;
+      return [m, soma(totaisPorCategoria(m))];
+    });
+    const maxMes = Math.max(...porMes.map(([, v]) => v), 1);
+    $('rColunas').innerHTML = porMes.map(([m, v], i) => `
+      <button class="coluna ${v > 0 ? 'tem' : ''} ${m === p ? 'sel' : ''}" data-mes="${m}"
+              title="${nomeMes(m)}: ${brl(v)}" ${v > 0 ? '' : 'disabled'}>
+        ${v > 0 ? `<span class="vlr">${compacto(v)}</span>` : ''}
+        <div class="haste" style="height:${Math.max((v / maxMes) * 130, 2)}px"></div>
+        <span class="mes">${MESES[i]}</span>
+      </button>`).join('');
+
+    // ----- Tabela categorias × meses do ano -----
+    $('rMatrizTitulo').textContent = `Categorias × meses · ${ano}`;
+    const mesesAno = porMes.filter(([, v]) => v !== 0).map(([m]) => m);
+    const catsAno = Object.entries(totaisPorCategoria(ano)).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    const valor = (m, c) => R.linhas.filter((l) => l.mes === m && l.categoria === c).reduce((s, l) => s + l.total, 0);
+    let maxCel = 0;
+    catsAno.forEach((c) => mesesAno.forEach((m) => { maxCel = Math.max(maxCel, valor(m, c)); }));
+    const fundo = (v) => v > 0 ? `background: color-mix(in srgb, var(--accent) ${Math.round((v / (maxCel || 1)) * 45)}%, transparent)` : '';
+
+    $('rMatriz').innerHTML = `
+      <thead><tr>
+        <th>Categoria</th>
+        ${mesesAno.map((m) => `<th class="num">${MESES[Number(m.slice(5, 7)) - 1]}</th>`).join('')}
+        <th class="num">Total</th>
+      </tr></thead>
+      <tbody>
+        ${catsAno.map((c) => `
+          <tr>
+            <th class="cat" data-cat="${esc(c)}" data-per="${ano}" title="Ver lançamentos de ${esc(c)} em ${ano}">${esc(c)}</th>
+            ${mesesAno.map((m) => {
+              const v = valor(m, c);
+              return `<td class="celula" data-cat="${esc(c)}" data-per="${m}" style="${fundo(v)}"
+                          title="${esc(c)} · ${nomeMes(m)}">${v ? brl(v) : '—'}</td>`;
+            }).join('')}
+            <td class="num"><strong>${brl(totaisPorCategoria(ano)[c])}</strong></td>
+          </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td>Total</td>
+        ${mesesAno.map((m) => `<td class="num">${brl(soma(totaisPorCategoria(m)))}</td>`).join('')}
+        <td class="num">${brl(soma(totaisPorCategoria(ano)))}</td>
+      </tr></tfoot>`;
+  }
+
+  // ----- Detalhe: lançamentos de uma categoria num período -----
+  async function abrirDetalhe(categoria, periodo) {
+    try {
+      const lista = await api(`/api/lancamentos?periodo=${periodo}&categoria=${encodeURIComponent(categoria)}`);
+      const total = lista.reduce((s, l) => s + l.valor, 0);
+      $('detalheTitulo').textContent = `${categoria} · ${nomePeriodo(periodo)} · ${brl(total)}`;
+      $('detalheLinhas').innerHTML = lista.map((l) => `
+        <tr>
+          <td>${dataBR(l.data)}</td>
+          <td>
+            <span class="nome">${esc(l.nome)}</span>
+            ${l.nome !== l.descricao ? `<span class="original">${esc(l.descricao)}</span>` : ''}
+          </td>
+          <td>${esc(l.banco || '—')}</td>
+          <td>${esc(l.parcela || '')}</td>
+          <td class="num ${l.valor < 0 ? 'neg' : ''}">${brl(l.valor)}</td>
+        </tr>`).join('') || '<tr><td colspan="5" class="rotulo">Nenhum lançamento.</td></tr>';
+      $('detalhe').classList.remove('hidden');
+      $('detalhe').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  function fecharDetalhe() { $('detalhe').classList.add('hidden'); }
+  $('fecharDetalhe').addEventListener('click', fecharDetalhe);
+
+  $('rCategorias').addEventListener('click', (e) => {
+    const alvo = e.target.closest('[data-cat]');
+    if (alvo) abrirDetalhe(alvo.dataset.cat, R.periodo);
+  });
+
+  $('rMatriz').addEventListener('click', (e) => {
+    const alvo = e.target.closest('[data-cat]');
+    if (alvo) abrirDetalhe(alvo.dataset.cat, alvo.dataset.per);
+  });
+
+  $('rColunas').addEventListener('click', (e) => {
+    const coluna = e.target.closest('[data-mes]');
+    if (coluna && !coluna.disabled) mudarModo('mes', coluna.dataset.mes);
   });
 
   // ---------- Início ----------
