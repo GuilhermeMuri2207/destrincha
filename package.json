@@ -1,0 +1,20 @@
+{
+  "name": "destrincha",
+  "version": "0.2.0",
+  "description": "Destrincha: organiza a fatura do cartão em PDF por categoria usando IA",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

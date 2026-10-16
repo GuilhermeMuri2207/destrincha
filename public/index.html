@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Destrincha</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280;
+      --border: #e5e7eb; --accent: #4f46e5; --accent-soft: #eef0ff;
+      --ok: #059669; --warn: #d97706; --neg: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111318; --card: #1a1d24; --text: #e8eaef; --muted: #9aa1ad;
+        --border: #2a2f3a; --accent: #818cf8; --accent-soft: #23264a;
+        --ok: #34d399; --warn: #fbbf24; --neg: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h3 { margin: 0 0 12px; font-size: 1.05rem; }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .drop { display: block; border: 2px dashed var(--border); border-radius: 12px; padding: 24px 12px; text-align: center; cursor: pointer; transition: border-color .15s; word-break: break-word; }
+    .drop:hover, .drop.over { border-color: var(--accent); }
+    .drop input { display: none; }
+    button { font: inherit; cursor: pointer; border-radius: 8px; }
+    .primario { background: var(--accent); color: #fff; border: 0; padding: 10px 18px; margin-top: 12px; width: 100%; }
+    .primario:disabled { opacity: .5; cursor: default; }
+    .secundario { background: transparent; color: var(--neg); border: 1px solid var(--border); padding: 8px 14px; }
+    .icone { background: transparent; border: 0; color: var(--muted); padding: 2px 6px; font-size: .95rem; }
+    .icone:hover { color: var(--accent); }
+    .erro { color: var(--neg); }
+    #status { margin: 10px 0 0; font-size: .9rem; }
+    .lista-item { display: block; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; color: var(--text); padding: 10px; margin-bottom: 4px; }
+    .lista-item:hover { border-color: var(--border); }
+    .lista-item.ativo { background: var(--accent-soft); border-color: var(--accent); }
+    .lista-item small { display: block; color: var(--muted); margin-top: 2px; }
+    .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .resumo .card { margin: 0; }
+    .rotulo { color: var(--muted); font-size: .85rem; }
+    .valor { font-size: 1.3rem; font-weight: 600; margin-top: 4px; word-break: break-word; }
+    .barra { display: grid; grid-template-columns: 160px 1fr 110px; gap: 8px; align-items: center; margin: 6px 0; font-size: .92rem; }
+    .trilho { background: var(--border); border-radius: 6px; height: 10px; overflow: hidden; }
+    .trilho div { background: var(--accent); height: 100%; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    th { color: var(--muted); font-weight: 500; }
+    td.num, th.num { text-align: right; }
+    .nome { font-weight: 500; }
+    .original { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+    .neg { color: var(--ok); }
+    select { font: inherit; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px; max-width: 100%; }
+    .topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .topo h3 { margin: 0; }
+    .hidden { display: none !important; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .92rem; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
+    #toast.visivel { opacity: 1; }
+    @media (max-width: 560px) {
+      .barra { grid-template-columns: 1fr 90px; }
+      .barra .trilho { grid-column: 1 / -1; grid-row: 2; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Destrincha</h1>
+  <p class="sub">Sua fatura, destrinchada. Envie o PDF do cartão e veja seus gastos por categoria.</p>
+
+  <div class="layout">
+    <aside>
+      <form id="form" class="card">
+        <label class="drop" id="drop">
+          <input type="file" id="arquivo" accept="application/pdf" />
+          <div id="dropTexto">Clique ou arraste o PDF da fatura aqui</div>
+        </label>
+        <button type="submit" class="primario" id="enviar" disabled>Analisar fatura</button>
+        <p id="status"></p>
+      </form>
+
+      <div class="card">
+        <h3>Minhas faturas</h3>
+        <div id="lista"><p class="rotulo">Nenhuma fatura salva ainda.</p></div>
+      </div>
+    </aside>
+
+    <div>
+      <div id="vazio" class="card">
+        <p class="rotulo" style="margin:0">Envie uma fatura ou escolha uma salva ao lado.</p>
+      </div>
+
+      <section id="resultado" class="hidden">
+        <div class="resumo">
+          <div class="card"><div class="rotulo">Cartão</div><div class="valor" id="banco">—</div></div>
+          <div class="card"><div class="rotulo">Vencimento</div><div class="valor" id="vencimento">—</div></div>
+          <div class="card"><div class="rotulo">Total somado</div><div class="valor" id="somado">—</div></div>
+          <div class="card"><div class="rotulo">Total na fatura</div><div class="valor" id="totalFatura">—</div><div id="conferencia" class="rotulo"></div></div>
+        </div>
+
+        <div class="card">
+          <h3>Por categoria</h3>
+          <div id="categorias"></div>
+        </div>
+
+        <div class="card">
+          <div class="topo">
+            <h3>Lançamentos (<span id="qtd">0</span>)</h3>
+            <select id="filtro"><option value="">Todas as categorias</option></select>
+          </div>
+          <p class="rotulo" style="margin-top:0">Clique em ✎ para renomear ou troque a categoria. A mudança vale para todos os lançamentos do mesmo lugar, inclusive nas próximas faturas.</p>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Data</th><th>Lançamento</th><th>Categoria</th><th>Parcela</th><th class="num">Valor</th></tr></thead>
+              <tbody id="linhas"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <button class="secundario" id="excluir">Excluir esta fatura</button>
+      </section>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+  const brl = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const dataBR = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d.split('-').reverse().join('/') : (d || '—');
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const $ = (id) => document.getElementById(id);
+
+  let CATEGORIAS = [];
+  let atual = null;
+
+  async function api(url, opcoes) {
+    const r = await fetch(url, opcoes);
+    if (r.status === 204) return null;
+    const dados = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(dados.erro || 'Erro inesperado.');
+    return dados;
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('visivel');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('visivel'), 3000);
+  }
+
+  // ---------- Lista de faturas salvas ----------
+  async function carregarLista() {
+    const faturas = await api('/api/faturas');
+    $('lista').innerHTML = faturas.length
+      ? faturas.map((f) => `
+          <button class="lista-item ${atual?.id === f.id ? 'ativo' : ''}" data-id="${f.id}">
+            ${esc(f.banco || f.arquivo || 'Fatura')}
+            <small>Venc. ${dataBR(f.vencimento)} · ${brl(f.somado)}</small>
+          </button>`).join('')
+      : '<p class="rotulo">Nenhuma fatura salva ainda.</p>';
+    return faturas;
+  }
+
+  $('lista').addEventListener('click', (e) => {
+    const item = e.target.closest('.lista-item');
+    if (item) abrir(Number(item.dataset.id));
+  });
+
+  async function abrir(id) {
+    try {
+      atual = await api(`/api/faturas/${id}`);
+      mostrar();
+      document.querySelectorAll('.lista-item').forEach((b) =>
+        b.classList.toggle('ativo', Number(b.dataset.id) === id));
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  // ---------- Upload ----------
+  const input = $('arquivo'), drop = $('drop'), botao = $('enviar'), status = $('status');
+
+  function escolher(file) {
+    if (!file) return;
+    if (file.type !== 'application/pdf') { status.innerHTML = '<span class="erro">Escolha um arquivo PDF.</span>'; return; }
+    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+    $('dropTexto').textContent = file.name;
+    botao.disabled = false; status.textContent = '';
+  }
+
+  input.addEventListener('change', () => escolher(input.files[0]));
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); escolher(e.dataTransfer.files[0]); });
+
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!input.files[0]) return;
+    botao.disabled = true;
+    status.textContent = 'Lendo a fatura… isso pode levar alguns segundos.';
+    const fd = new FormData(); fd.append('fatura', input.files[0]);
+    try {
+      atual = await api('/api/fatura', { method: 'POST', body: fd });
+      status.textContent = '';
+      $('dropTexto').textContent = 'Clique ou arraste o PDF da fatura aqui';
+      input.value = '';
+      mostrar();
+      await carregarLista();
+      toast('Fatura salva!');
+    } catch (err) {
+      status.innerHTML = `<span class="erro">${esc(err.message)}</span>`;
+      botao.disabled = false;
+    }
+  });
+
+  // ---------- Exibição ----------
+  function mostrar() {
+    const d = atual;
+    const lancamentos = d.lancamentos || [];
+    const somado = lancamentos.reduce((s, l) => s + l.valor, 0);
+
+    $('banco').textContent = d.banco || '—';
+    $('vencimento').textContent = dataBR(d.vencimento);
+    $('somado').textContent = brl(somado);
+    $('totalFatura').textContent = brl(d.total_fatura);
+
+    // Conferência: compara a soma dos lançamentos com o total impresso na fatura
+    const conf = $('conferencia');
+    if (d.total_fatura != null) {
+      const dif = somado - d.total_fatura;
+      conf.innerHTML = Math.abs(dif) < 0.05
+        ? '<span style="color:var(--ok)">✓ Bate com a soma</span>'
+        : `<span style="color:var(--warn)">Diferença de ${brl(dif)}</span>`;
+    } else conf.textContent = '';
+
+    // Gastos por categoria (só valores positivos)
+    const porCat = {};
+    lancamentos.forEach((l) => { if (l.valor > 0) porCat[l.categoria] = (porCat[l.categoria] || 0) + l.valor; });
+    const cats = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+    const max = cats[0]?.[1] || 1;
+    $('categorias').innerHTML = cats.map(([c, v]) => `
+      <div class="barra">
+        <span>${esc(c)}</span>
+        <div class="trilho"><div style="width:${(v / max) * 100}%"></div></div>
+        <span class="num">${brl(v)}</span>
+      </div>`).join('') || '<p class="rotulo">Nenhum gasto encontrado.</p>';
+
+    // Filtro mantém a escolha anterior se a categoria ainda existir
+    const filtro = $('filtro');
+    const anterior = filtro.value;
+    const presentes = [...new Set(lancamentos.map((l) => l.categoria))].sort();
+    filtro.innerHTML = '<option value="">Todas as categorias</option>' +
+      presentes.map((c) => `<option ${c === anterior ? 'selected' : ''}>${esc(c)}</option>`).join('');
+
+    tabela(filtro.value);
+    $('vazio').classList.add('hidden');
+    $('resultado').classList.remove('hidden');
+  }
+
+  function tabela(cat) {
+    const lista = cat ? atual.lancamentos.filter((l) => l.categoria === cat) : atual.lancamentos;
+    $('qtd').textContent = lista.length;
+    $('linhas').innerHTML = lista.map((l) => `
+      <tr>
+        <td>${dataBR(l.data)}</td>
+        <td>
+          <span class="nome">${esc(l.nome)}</span>
+          <button class="icone" data-renomear="${l.id}" title="Renomear">✎</button>
+          ${l.nome !== l.descricao ? `<span class="original">${esc(l.descricao)}</span>` : ''}
+        </td>
+        <td>
+          <select data-categoria="${l.id}" aria-label="Categoria">
+            ${CATEGORIAS.map((c) => `<option ${c === l.categoria ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+          </select>
+        </td>
+        <td>${esc(l.parcela || '')}</td>
+        <td class="num ${l.valor < 0 ? 'neg' : ''}">${brl(l.valor)}</td>
+      </tr>`).join('');
+  }
+
+  $('filtro').addEventListener('change', (e) => tabela(e.target.value));
+
+  // ---------- Correções (nome e categoria) ----------
+  async function corrigir(id, campos) {
+    try {
+      const { alterados } = await api(`/api/lancamentos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campos),
+      });
+      toast(alterados > 1
+        ? `${alterados} lançamentos atualizados. Vou lembrar disso nas próximas faturas.`
+        : 'Atualizado. Vou lembrar disso nas próximas faturas.');
+      await abrir(atual.id);
+      await carregarLista();
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  $('linhas').addEventListener('change', (e) => {
+    const id = e.target.dataset.categoria;
+    if (id) corrigir(id, { categoria: e.target.value });
+  });
+
+  $('linhas').addEventListener('click', (e) => {
+    const id = e.target.dataset.renomear;
+    if (!id) return;
+    const lanc = atual.lancamentos.find((l) => l.id === Number(id));
+    const novo = prompt(`Novo nome para "${lanc.descricao}":`, lanc.nome);
+    if (novo && novo.trim() && novo.trim() !== lanc.nome) corrigir(id, { nome: novo.trim() });
+  });
+
+  // ---------- Exclusão ----------
+  $('excluir').addEventListener('click', async () => {
+    if (!atual || !confirm('Excluir esta fatura e todos os lançamentos dela?')) return;
+    try {
+      await api(`/api/faturas/${atual.id}`, { method: 'DELETE' });
+      atual = null;
+      $('resultado').classList.add('hidden');
+      $('vazio').classList.remove('hidden');
+      const faturas = await carregarLista();
+      if (faturas[0]) abrir(faturas[0].id);
+      toast('Fatura excluída.');
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+
+  // ---------- Início ----------
+  (async () => {
+    try {
+      CATEGORIAS = await api('/api/categorias');
+      const faturas = await carregarLista();
+      if (faturas[0]) abrir(faturas[0].id);
+    } catch (err) {
+      toast('Não consegui falar com o servidor. Ele está rodando?');
+    }
+  })();
+</script>
+</body>
+</html>
