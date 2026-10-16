@@ -331,7 +331,10 @@
 
     // Conferência: compara a soma dos lançamentos com o total impresso na fatura
     const conf = $('conferencia');
-    if (d.total_fatura != null) {
+    if (d.total_fatura === 0 && somado > 0) {
+      // Fatura zerada: foi paga antes de fechar, então a soma não precisa bater
+      conf.innerHTML = '<span class="rotulo">Fatura zerada (paga antes do fechamento)</span>';
+    } else if (d.total_fatura != null) {
       const dif = somado - d.total_fatura;
       conf.innerHTML = Math.abs(dif) < 0.05
         ? '<span style="color:var(--ok)">✓ Bate com a soma</span>'

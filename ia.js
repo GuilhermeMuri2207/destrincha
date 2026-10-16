@@ -2,6 +2,11 @@
 import { GoogleGenAI } from '@google/genai';
 
 export const MODEL = process.env.MODEL || 'gemini-3.8-flash';
+// Usado quando o modelo principal está sobrecarregado (erro 503)
+export const MODEL_RESERVA = process.env.MODEL_RESERVA || 'gemini-3.6-flash';
+
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const temporario = (e) => [500, 502, 503, 504].includes(e?.status);
 
 export const CATEGORIAS = [
   'Mercado',
@@ -37,7 +42,8 @@ Extraia os dados e responda APENAS com um JSON válido, sem texto antes ou depoi
 
 Regras:
 - Valores em número com ponto decimal (ex.: 1234.56), sem "R$".
-- NÃO inclua o pagamento da fatura anterior nem saldo anterior.
+- NÃO inclua o pagamento da fatura anterior, saldo anterior nem pagamentos/créditos de pagamento antecipado.
+- "total_fatura" é o valor a pagar impresso na fatura (pode ser 0 se ela foi paga antes do fechamento).
 - Inclua anuidade, IOF, juros e tarifas como lançamentos (categoria "Contas/Serviços").
 - Se houver mais de um cartão (titular e adicional), junte tudo na mesma lista.
 - Escolha a categoria pelo nome do estabelecimento; na dúvida use "Outros".
@@ -50,8 +56,35 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 /** Envia o PDF para a IA e devolve os dados da fatura já normalizados. */
 export async function extrairFatura(pdfBuffer) {
-  const resposta = await ai.interactions.create({
-    model: MODEL,
+  const resposta = await chamarComTentativas(pdfBuffer);
+  return interpretar(resposta);
+}
+
+/**
+ * O plano gratuito às vezes responde 503 (modelo sobrecarregado).
+ * Tenta o modelo principal 3 vezes com espera crescente e depois o modelo reserva.
+ */
+async function chamarComTentativas(pdfBuffer) {
+  const modelos = [...new Set([MODEL, MODEL_RESERVA])];
+  let ultimoErro;
+  for (const modelo of modelos) {
+    for (const ms of [0, 2000, 5000]) {
+      if (ms) await espera(ms);
+      try {
+        return await chamar(modelo, pdfBuffer);
+      } catch (e) {
+        ultimoErro = e;
+        if (!temporario(e)) throw e; // erro de chave, PDF etc.: não adianta repetir
+        console.warn(`[${modelo}] indisponível (${e.status}), tentando de novo...`);
+      }
+    }
+  }
+  throw ultimoErro;
+}
+
+function chamar(modelo, pdfBuffer) {
+  return ai.interactions.create({
+    model: modelo,
     input: [
       { type: 'text', text: PROMPT },
       {
@@ -61,7 +94,9 @@ export async function extrairFatura(pdfBuffer) {
       },
     ],
   });
+}
 
+function interpretar(resposta) {
   const dados = extrairJson(resposta.output_text || '');
   return {
     banco: dados.banco ?? null,
@@ -102,6 +137,9 @@ export function mensagemErro(e) {
   }
   if (e?.status === 429) {
     return 'Limite gratuito atingido por agora. Espere um pouco e tente de novo.';
+  }
+  if (temporario(e)) {
+    return 'O Gemini está sobrecarregado agora. Espere um minuto e tente de novo.';
   }
   if (e?.status === 400) {
     return 'Não consegui ler esse PDF. Se ele tiver senha, remova a senha antes de enviar.';
